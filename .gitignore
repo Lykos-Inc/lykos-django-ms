@@ -4,3 +4,4 @@ docker-compose.yaml
 jwt-middleware.yaml
 
 prompt.md
+/services/**/**/migrations/

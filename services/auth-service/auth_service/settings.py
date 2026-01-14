@@ -104,7 +104,7 @@ SIMPLE_JWT = {
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Lykos Auth Service API',
     'DESCRIPTION': 'Autenticação e gerenciamento de usuários',
-    'VERSION': '1.0.0',
+    'VERSION': '1.0.1',
 }
 
 # === SOCIAL AUTH ===

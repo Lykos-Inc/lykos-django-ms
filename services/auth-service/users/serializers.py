@@ -3,6 +3,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from celery import current_app
 
 # Importações da SUA lib compartilhada
 from shared.utils import validate_cpf, formatar_telefone
@@ -73,6 +74,28 @@ class RegisterSerializer(serializers.ModelSerializer):
             'senha_hash': {'write_only': True, 'label': 'Senha'},
             'email': {'error_messages': {'unique': 'Este e-mail já está cadastrado.'}}
         }
+
+    def create(self, validated_data):
+        # ... (código existente da transaction.atomic) ...
+        with transaction.atomic():
+            user = Usuario.objects.create_user(senha=senha, **validated_data)
+            Pessoa.objects.create(usuario=user, **pessoa_data)
+            for endereco in enderecos_data:
+                Endereco.objects.create(usuario=user, **endereco)
+
+        # FORA DO BLOCK ATOMIC (Só envia se salvou no banco com sucesso)
+        # Envia mensagem para a fila 'user_created'
+        payload = {
+            'id': user.id,
+            'email': user.email,
+            'nome': user.nome_usuario,
+            'tipo': user.tipo
+        }
+
+        # O queue='celery' é o padrão. O nome da task deve bater com o do profile-service.
+        current_app.send_task('user_created', args=[payload])
+
+        return user
 
     def validate(self, data):
         # Validação de Senha Igual
