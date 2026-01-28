@@ -1,0 +1,18 @@
+http:
+  middlewares:
+    # Middleware de Autenticação
+    jwt-auth:
+      forwardAuth:
+        # Chama este endpoint no Auth Service para validar
+        address: "http://auth-service:8000/api/auth/validate/"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+          - "Authorization" # Repassa o token para o serviço final
+
+    # Middleware para remover prefixo da doc (opcional, mas bom ter)
+    docs-strip:
+      stripPrefix:
+        prefixes:
+          - "/docs"

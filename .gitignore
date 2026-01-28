@@ -1,6 +1,7 @@
 .env
 traefik.yaml
 docker-compose.yaml
+docker-compose.yml
 jwt-middleware.yaml
 
 prompt.md

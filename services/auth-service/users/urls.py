@@ -11,7 +11,8 @@ from .views import (
     LoginView,
     MeView,
     PessoaViewSet,
-    EnderecoViewSet
+    EnderecoViewSet,
+    validate_token
 )
 
 router = DefaultRouter()
@@ -38,4 +39,6 @@ urlpatterns = [
 
     # --- Rotas do Router (CRUDs) ---
     path('', include(router.urls)),
+    # Rota usada pelo Traefik
+    path('api/auth/validate/', validate_token, name='token_validate'),
 ]

@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -68,3 +69,21 @@ class EnderecoViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
+
+
+# --- Endpoint para o Traefik (ForwardAuth) ---
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def validate_token(request):
+    """
+    Endpoint leve apenas para o Traefik verificar se o Token é válido.
+    Se o middleware 'IsAuthenticated' deixar chegar aqui, é porque é válido.
+    """
+    # Headers que o Traefik vai injetar na requisição original
+    response = Response({"valid": True})
+    response["X-User-Id"] = str(request.user.id)
+    response["X-User-Email"] = request.user.email
+    # Se você tiver um campo 'tipo' (freelancer/cliente), é bom passar também:
+    # response["X-User-Type"] = request.user.tipo
+
+    return response

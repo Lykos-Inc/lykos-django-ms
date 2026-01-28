@@ -1,0 +1,25 @@
+api:
+  dashboard: true
+  insecure: true # Habilita acesso ao dashboard na porta 8080
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  # 1. Lê os containers Docker
+  docker:
+    endpoint: "unix:///var/run/docker.sock" # Essencial no Linux/WSL
+    exposedByDefault: false # Segurança: só expõe quem tiver label 'traefik.enable=true'
+    network: lykos-net
+
+  # 2. Lê os arquivos da pasta dynamic (onde está o jwt-middleware)
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+# Configurações de Log (opcional, ajuda a debugar)
+log:
+  level: INFO

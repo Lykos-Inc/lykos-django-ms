@@ -1,13 +1,20 @@
+# -----------------------------------------------------------------------------
+# DOCKER COMPOSE EXAMPLE - LYKOS MICROSERVICES
+#
+# INSTRUÇÕES:
+# 1. Copie este arquivo para 'docker-compose.yml'.
+# 2. Certifique-se de ter criado o arquivo '.env' baseado no '.env.example'.
+# 3. Execute 'docker compose up -d'.
+# -----------------------------------------------------------------------------
+
 services:
-  # Serviço Traefik (Proxy Reverso)
   traefik:
     image: traefik:v3.6
     command:
       - "--configFile=/etc/traefik/traefik.yaml"
     ports:
       - "80:80"
-      - "443:443"
-      - "8080:8080" # Dashboard do Traefik
+      - "8080:8080"
     volumes:
       - ./traefik/traefik.yaml:/etc/traefik/traefik.yaml
       - ./traefik/dynamic:/etc/traefik/dynamic
@@ -16,27 +23,53 @@ services:
     networks:
       - lykos-net
 
-  # Serviço MinIO (Object Storage S3-compatible)
+  postgres:
+    image: postgres:16
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - lykos-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lykos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   minio:
     image: minio/minio
     command: server /data --console-address ":9001"
-    # Credenciais definidas no .env (MINIO_ROOT_USER, MINIO_ROOT_PASSWORD)
     env_file:
       - .env
     ports:
-      - "9000:9000" # API S3
-      - "9001:9001" # Console Web
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio-data:/data
     networks:
       - lykos-net
 
-  # Serviço Swagger UI (Portal de Documentação Unificado)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    env_file:
+      - .env
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - lykos-net
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pgadmin.rule=PathPrefix(`/pgadmin`)"
+      - "traefik.http.routers.pgadmin.entrypoints=web"
+      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
+
   swagger-ui:
     image: swaggerapi/swagger-ui
     environment:
-      # URLS aponta para os esquemas gerados pelos microsserviços
-      URLS: "[ { url: '/api/auth/schema/', name: 'Auth Service' } ]"
+      URLS: "[ { url: '/api/auth/schema/', name: 'Auth Service' }, { url: '/api/profiles/schema/', name: 'Profile Service' }, { url: '/api/catalog/schema/', name: 'Catalog Service' }, { url: '/api/orders/schema/', name: 'Order Service' } ]"
       VALIDATOR_URL: "none"
       DOC_EXPANSION: "list"
       DOM_ID: "#swagger-ui"
@@ -50,70 +83,89 @@ services:
       - "traefik.http.middlewares.docs-strip.stripprefix.prefixes=/docs"
       - "traefik.http.routers.docs.middlewares=docs-strip"
 
-  # Serviço PostgreSQL (Banco de Dados)
-  postgres:
-    image: postgres:16
-    # Carrega POSTGRES_USER, POSTGRES_PASSWORD e POSTGRES_DB do .env
-    env_file:
-      - .env
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - lykos-net
-    healthcheck:
-      # Verifica saúde usando o usuário definido no .env
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lykos}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Serviço PGAdmin (Interface Gráfica do Banco)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    environment:
-      PGADMIN_DEFAULT_EMAIL: "admin@lykos.com"
-      PGADMIN_DEFAULT_PASSWORD: "admin"
-      SCRIPT_NAME: /pgadmin
-    ports:
-      - "5050:80" # Acesso local em http://localhost:5050
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    networks:
-      - lykos-net
-    depends_on:
-      - postgres
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.pgadmin.rule=PathPrefix(`/pgadmin`)"
-      - "traefik.http.routers.pgadmin.entrypoints=web"
-      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
-
-  # Serviço Auth Service (Aplicação Django)
   auth-service:
     build:
       context: .
       dockerfile: services/auth-service/Dockerfile
-    # Carrega as variáveis do .env para dentro do container
     env_file:
       - .env
-    # Mapeamento explícito para garantir a interpolação das chaves corretas
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - SECRET_KEY=${SECRET_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)"
-      - "traefik.http.routers.auth.entrypoints=web"
-      - "traefik.http.services.auth.loadbalancer.server.port=8000"
     volumes:
       - ./services/auth-service:/app
       - ./shared:/shared
+    command: gunicorn auth_service.wsgi:application --bind 0.0.0.0:8000 --reload
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - lykos-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+
+  profile-service:
+    build:
+      context: .
+      dockerfile: services/profile-service/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./services/profile-service:/app
+      - ./shared:/shared
+    command: gunicorn profile_service.wsgi:application --bind 0.0.0.0:8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lykos-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.profile.rule=PathPrefix(`/api/profiles`)"
+      - "traefik.http.routers.profile.entrypoints=web"
+      - "traefik.http.services.profile.loadbalancer.server.port=8000"
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: services/catalog-service/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./services/catalog-service:/app
+      - ./shared:/shared
+    command: gunicorn catalog_service.wsgi:application --bind 0.0.0.0:8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lykos-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.catalog.rule=PathPrefix(`/api/catalog`)"
+      - "traefik.http.routers.catalog.entrypoints=web"
+      - "traefik.http.services.catalog.loadbalancer.server.port=8000"
+
+  order-service:
+    build:
+      context: .
+      dockerfile: services/order-service/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./services/order-service:/app
+      - ./shared:/shared
+    command: gunicorn order_service.wsgi:application --bind 0.0.0.0:8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lykos-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.order.rule=PathPrefix(`/api/orders`)"
+      - "traefik.http.routers.order.entrypoints=web"
+      - "traefik.http.services.order.loadbalancer.server.port=8000"
 
 volumes:
   postgres-data:
