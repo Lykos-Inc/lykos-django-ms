@@ -1,14 +1,21 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from shared.enums import TipoUsuario, StatusConta, TipoEndereco  # Do shared/
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from shared.enums import TipoUsuario, StatusConta, TipoEndereco
 
 
 class UserManager(BaseUserManager):
     def create_user(self, email, nome_usuario, senha=None, **extra_fields):
+        # Correção: Se o serializer enviar 'senha_hash', usamos ela como senha
+        if senha is None and 'senha_hash' in extra_fields:
+            senha = extra_fields.pop('senha_hash')
+
         if not email:
             raise ValueError("Email obrigatório")
+
         email = self.normalize_email(email)
         user = self.model(email=email, nome_usuario=nome_usuario, **extra_fields)
+
+        # set_password faz o hash e salva no campo 'password' do AbstractBaseUser
         user.set_password(senha)
         user.save(using=self._db)
         return user
@@ -16,14 +23,28 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, nome_usuario, senha=None, **extra_fields):
         extra_fields.setdefault("tipo", TipoUsuario.ADMIN)
         extra_fields.setdefault("status", StatusConta.ATIVO)
+        # Flags obrigatórias para superusuário
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
         return self.create_user(email, nome_usuario, senha, **extra_fields)
 
 
-class Usuario(AbstractBaseUser):
+class Usuario(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     nome_usuario = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
-    senha_hash = models.CharField(max_length=255)  # Não use, set_password faz hash
+
+    # Mantivemos senha_hash para compatibilidade com seu serializer,
+    # mas o Django usa internamente o campo 'password' (herdado).
+    senha_hash = models.CharField(max_length=255, blank=True)
+
     tipo = models.CharField(
         max_length=20, choices=TipoUsuario.choices, default=TipoUsuario.CLIENTE
     )
@@ -32,8 +53,13 @@ class Usuario(AbstractBaseUser):
     )
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
-    is_social = models.BooleanField(default=False)  # saber se veio do Google
+    is_social = models.BooleanField(default=False)
     avatar_url = models.URLField(blank=True, null=True)
+
+    # --- Campos Padrão do Django Auth ---
+    is_staff = models.BooleanField(default=False)  # Necessário para acessar o Admin
+    is_active = models.BooleanField(default=True)  # Necessário para fazer login
+    # is_superuser, groups e user_permissions vêm do PermissionsMixin
 
     objects = UserManager()
 
@@ -59,6 +85,9 @@ class Pessoa(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.nome_completo
+
 
 class Endereco(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -72,3 +101,6 @@ class Endereco(models.Model):
     cep = models.CharField(max_length=15)
     cidade = models.CharField(max_length=100)
     estado = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.logradouro}, {self.numero}"
