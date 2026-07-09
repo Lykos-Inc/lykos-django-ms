@@ -79,7 +79,17 @@ CELERY_TASK_ACKS_LATE = True
 # === SWAGGER ===
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'shared.authentication.RemoteJWTAuthentication',
+    ),
 }
+
+# JWT emitido pelo auth-service — precisa da mesma SIGNING_KEY para validar a assinatura
+SIMPLE_JWT = {
+    'SIGNING_KEY': env('JWT_SECRET'),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Lykos Profile Service API',
     'DESCRIPTION': 'Gerenciamento de perfis e portfólios',

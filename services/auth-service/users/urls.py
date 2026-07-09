@@ -41,6 +41,6 @@ urlpatterns = [
 
     # --- Rotas do Router (CRUDs) ---
     path('', include(router.urls)),
-    # Rota usada pelo Traefik
-    path('api/auth/validate/', validate_token, name='token_validate'),
+    # Rota usada pelo Traefik (path final: /api/auth/validate/, prefixo já vem do include em auth_service/urls.py)
+    path('validate/', validate_token, name='token_validate'),
 ]

@@ -37,6 +37,22 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "lykos-erlang-cookie"
+    env_file:
+      - .env
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - lykos-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   minio:
     image: minio/minio
     command: server /data --console-address ":9001"
@@ -96,6 +112,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - lykos-net
     labels:
@@ -117,6 +135,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - lykos-net
     labels:
@@ -124,6 +144,24 @@ services:
       - "traefik.http.routers.profile.rule=PathPrefix(`/api/profiles`)"
       - "traefik.http.routers.profile.entrypoints=web"
       - "traefik.http.services.profile.loadbalancer.server.port=8000"
+
+  profile-worker:
+    build:
+      context: .
+      dockerfile: services/profile-service/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./services/profile-service:/app
+      - ./shared:/shared
+    command: celery -A profile_service worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - lykos-net
 
   catalog-service:
     build:
@@ -169,6 +207,7 @@ services:
 
 volumes:
   postgres-data:
+  rabbitmq-data:
   minio-data:
   pgadmin-data:
   traefik-certificates:

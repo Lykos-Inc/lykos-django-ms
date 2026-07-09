@@ -22,6 +22,10 @@ COPY services/order-service/requirements.txt /app/
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Instala o pacote shared (usado por shared.authentication.RemoteJWTAuthentication)
+COPY shared /tmp/shared_pkg
+RUN pip install --no-cache-dir /tmp/shared_pkg
+
 # --- CORREÇÃO AQUI TAMBÉM ---
 # Copiamos apenas a pasta do serviço específico para dentro do container
 # Se usássemos "COPY . /app/", ele copiaria o monorepo inteiro (auth, catalog, etc)

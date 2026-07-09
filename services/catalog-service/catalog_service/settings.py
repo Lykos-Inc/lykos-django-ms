@@ -94,6 +94,15 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 12,  # Paginação é vital para catálogos
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'shared.authentication.RemoteJWTAuthentication',
+    ),
+}
+
+# JWT emitido pelo auth-service — precisa da mesma SIGNING_KEY para validar a assinatura
+SIMPLE_JWT = {
+    'SIGNING_KEY': os.environ.get('JWT_SECRET', 'sua_chave_secreta_aqui'),
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 SPECTACULAR_SETTINGS = {

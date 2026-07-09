@@ -77,7 +77,7 @@ ABACATEPAY_API_KEY = os.environ.get('ABACATEPAY_API_KEY', '')
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'shared.authentication.RemoteJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -87,8 +87,6 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'SIGNING_KEY': os.environ.get('JWT_SECRET', 'sua_chave_secreta_aqui'), # Tem que ser a MESMA do Auth Service
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
 }
 
 SPECTACULAR_SETTINGS = {

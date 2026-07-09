@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "Pacote compartilhado do Lykos"
 requires-python = ">=3.10"
 dependencies = [
-    "Django>=5.1.0"
+    "Django>=5.1.0",
+    "djangorestframework-simplejwt>=5.3.0"
 ]
 
 # 👇 A MÁGICA ESTÁ AQUI: Diz onde achar o código
