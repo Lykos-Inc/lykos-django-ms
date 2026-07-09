@@ -124,6 +124,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['email'] = user.email
         token['is_buyer'] = user.is_buyer
         token['is_seller'] = user.is_seller
+        token['is_staff'] = user.is_staff
         token['user_id'] = user.id
 
         return token
