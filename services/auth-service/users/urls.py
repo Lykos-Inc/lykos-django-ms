@@ -12,6 +12,7 @@ from .views import (
     MeView,
     PessoaViewSet,
     EnderecoViewSet,
+    BecomeSellerView,
     validate_token
 )
 
@@ -24,6 +25,7 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),  # Seu login com JWT Customizado
     path('me/', MeView.as_view(), name='me'),
+    path('become-seller/', BecomeSellerView.as_view(), name='become-seller'),
 
     # Logout (opcional, pois JWT é stateless, mas útil para blacklist se configurado)
     path('logout/', LogoutView.as_view(), name='rest_logout'),

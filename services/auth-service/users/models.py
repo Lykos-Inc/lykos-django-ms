@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from shared.enums import TipoUsuario, StatusConta, TipoEndereco
+from shared.enums import StatusConta, TipoEndereco
 
 
 class UserManager(BaseUserManager):
@@ -21,7 +21,6 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, nome_usuario, senha=None, **extra_fields):
-        extra_fields.setdefault("tipo", TipoUsuario.ADMIN)
         extra_fields.setdefault("status", StatusConta.ATIVO)
         # Flags obrigatórias para superusuário
         extra_fields.setdefault("is_staff", True)
@@ -45,9 +44,8 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     # mas o Django usa internamente o campo 'password' (herdado).
     senha_hash = models.CharField(max_length=255, blank=True)
 
-    tipo = models.CharField(
-        max_length=20, choices=TipoUsuario.choices, default=TipoUsuario.CLIENTE
-    )
+    is_buyer = models.BooleanField(default=True)
+    is_seller = models.BooleanField(default=False)
     status = models.CharField(
         max_length=20, choices=StatusConta.choices, default=StatusConta.ATIVO
     )
@@ -70,6 +68,10 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         if not self.nome_usuario and self.email:
             self.nome_usuario = self.email.split("@")[0]
         super().save(*args, **kwargs)
+
+    def promote_to_seller(self):
+        self.is_seller = True
+        self.save(update_fields=["is_seller"])
 
     def __str__(self):
         return self.email

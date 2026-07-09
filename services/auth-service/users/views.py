@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from drf_spectacular.utils import extend_schema
+from celery import current_app
 
 from .serializers import (
     UsuarioSerializer, RegisterSerializer, PessoaSerializer,
@@ -71,6 +72,27 @@ class EnderecoViewSet(viewsets.ModelViewSet):
         serializer.save(usuario=self.request.user)
 
 
+class BecomeSellerView(APIView):
+    """
+    Ativa o modo vendedor para o usuário logado. O auth-service é o dono
+    dessa transição de papel; outros serviços reagem ao evento 'seller_activated'.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: UsuarioSerializer})
+    def post(self, request):
+        user = request.user
+        user.promote_to_seller()
+
+        current_app.send_task('seller_activated', args=[{
+            'id': user.id,
+            'email': user.email,
+            'nome': user.nome_usuario,
+        }])
+
+        return Response(UsuarioSerializer(user).data)
+
+
 # --- Endpoint para o Traefik (ForwardAuth) ---
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -83,7 +105,7 @@ def validate_token(request):
     response = Response({"valid": True})
     response["X-User-Id"] = str(request.user.id)
     response["X-User-Email"] = request.user.email
-    # Se você tiver um campo 'tipo' (freelancer/cliente), é bom passar também:
-    # response["X-User-Type"] = request.user.tipo
+    response["X-User-Is-Buyer"] = str(request.user.is_buyer)
+    response["X-User-Is-Seller"] = str(request.user.is_seller)
 
     return response
