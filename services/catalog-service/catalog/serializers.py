@@ -49,6 +49,7 @@ class ServicoDetailSerializer(serializers.ModelSerializer):
             'area', 'categoria', 'subcategoria', 'subcategoria_id',
             'pacotes', 'created_at'
         ]
+        read_only_fields = ['freelancer_id']
 
     def create(self, validated_data):
         pacotes_data = validated_data.pop('pacotes')
