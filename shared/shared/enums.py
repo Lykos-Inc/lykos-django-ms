@@ -1,10 +1,5 @@
 from django.db import models
 
-class TipoUsuario(models.TextChoices):
-    CLIENTE = "CLIENTE", "Cliente"
-    FREELANCER = "FREELANCER", "Freelancer"
-    ADMIN = "ADMIN", "Admin"
-
 class StatusConta(models.TextChoices):
     ATIVO = "ATIVO", "Ativo"
     SUSPENSO = "SUSPENSO", "Suspenso"

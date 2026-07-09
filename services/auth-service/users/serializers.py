@@ -13,7 +13,7 @@ from .models import Usuario, Pessoa, Endereco
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['id', 'nome_usuario', 'email', 'tipo', 'status', 'data_criacao']
+        fields = ['id', 'nome_usuario', 'email', 'is_buyer', 'is_seller', 'status', 'data_criacao']
 
 
 class PessoaSerializer(serializers.ModelSerializer):
@@ -69,33 +69,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['nome_usuario', 'email', 'senha_hash', 'senha2', 'tipo', 'pessoa', 'enderecos']
+        fields = ['nome_usuario', 'email', 'senha_hash', 'senha2', 'pessoa', 'enderecos']
         extra_kwargs = {
             'senha_hash': {'write_only': True, 'label': 'Senha'},
             'email': {'error_messages': {'unique': 'Este e-mail já está cadastrado.'}}
         }
-
-    def create(self, validated_data):
-        # ... (código existente da transaction.atomic) ...
-        with transaction.atomic():
-            user = Usuario.objects.create_user(senha=senha, **validated_data)
-            Pessoa.objects.create(usuario=user, **pessoa_data)
-            for endereco in enderecos_data:
-                Endereco.objects.create(usuario=user, **endereco)
-
-        # FORA DO BLOCK ATOMIC (Só envia se salvou no banco com sucesso)
-        # Envia mensagem para a fila 'user_created'
-        payload = {
-            'id': user.id,
-            'email': user.email,
-            'nome': user.nome_usuario,
-            'tipo': user.tipo
-        }
-
-        # O queue='celery' é o padrão. O nome da task deve bater com o do profile-service.
-        current_app.send_task('user_created', args=[payload])
-
-        return user
 
     def validate(self, data):
         # Validação de Senha Igual
@@ -120,6 +98,19 @@ class RegisterSerializer(serializers.ModelSerializer):
             for endereco in enderecos_data:
                 Endereco.objects.create(usuario=user, **endereco)
 
+        # FORA DO BLOCK ATOMIC (Só envia se salvou no banco com sucesso)
+        # Envia mensagem para a fila 'user_created'
+        payload = {
+            'id': user.id,
+            'email': user.email,
+            'nome': user.nome_usuario,
+            'is_buyer': user.is_buyer,
+            'is_seller': user.is_seller,
+        }
+
+        # O queue='celery' é o padrão. O nome da task deve bater com o do profile-service.
+        current_app.send_task('user_created', args=[payload])
+
         return user
 
 
@@ -131,7 +122,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Claims essenciais para o Traefik
         token['name'] = user.nome_usuario
         token['email'] = user.email
-        token['tipo'] = user.tipo
+        token['is_buyer'] = user.is_buyer
+        token['is_seller'] = user.is_seller
         token['user_id'] = user.id
 
         return token
@@ -142,6 +134,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'id': self.user.id,
             'email': self.user.email,
             'nome_usuario': self.user.nome_usuario,
-            'tipo': self.user.tipo
+            'is_buyer': self.user.is_buyer,
+            'is_seller': self.user.is_seller,
         }
         return data
