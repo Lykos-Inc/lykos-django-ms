@@ -71,8 +71,15 @@ DATABASES = {
     }
 }
 
-# Configuração do AbacatePay (Variável que você deve por no .env)
+# Configuração do AbacatePay (Variáveis que você deve por no .env)
 ABACATEPAY_API_KEY = os.environ.get('ABACATEPAY_API_KEY', '')
+ABACATEPAY_RETURN_URL = os.environ.get('ABACATEPAY_RETURN_URL', '')
+ABACATEPAY_COMPLETION_URL = os.environ.get('ABACATEPAY_COMPLETION_URL', '')
+
+# Segurança do Webhook (https://docs.abacatepay.com/pages/webhooks):
+# secret na query string da URL cadastrada + assinatura HMAC-SHA256 no header X-Webhook-Signature
+ABACATEPAY_WEBHOOK_SECRET = os.environ.get('ABACATEPAY_WEBHOOK_SECRET', '')
+ABACATEPAY_WEBHOOK_SIGNING_KEY = os.environ.get('ABACATEPAY_WEBHOOK_SIGNING_KEY', '')
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

@@ -11,6 +11,7 @@ class Order(models.Model):
         ('COMPLETED', 'Concluído'),
         ('CANCELLED', 'Cancelado'),
         ('REFUNDED', 'Reembolsado'),
+        ('DISPUTED', 'Em Disputa'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -19,6 +20,7 @@ class Order(models.Model):
     client_id = models.IntegerField(help_text="ID do usuário (Auth Service) que comprou")
     freelancer_id = models.IntegerField(help_text="ID do usuário (Auth Service) que vendeu")
     gig_id = models.IntegerField(help_text="ID do Gig (Catalog Service)")
+    pacote_id = models.IntegerField(help_text="ID do Pacote escolhido (Catalog Service)")
     package_title = models.CharField(max_length=200, help_text="Snapshot do título na hora da compra")
 
     # --- Financeiro (Split de Pagamento) ---
