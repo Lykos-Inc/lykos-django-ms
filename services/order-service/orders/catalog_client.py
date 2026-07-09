@@ -9,10 +9,10 @@ class CatalogClient:
     @classmethod
     def get_gig_details(cls, gig_id):
         """
-        Consulta o Catalog Service para pegar detalhes do Gig.
+        Consulta o Catalog Service para pegar detalhes do Gig (inclui os pacotes).
         """
         try:
-            url = f"{cls.BASE_URL}/gigs/{gig_id}/"
+            url = f"{cls.BASE_URL}/servicos/by-id/{gig_id}/"
             response = requests.get(url, timeout=5)
 
             if response.status_code == 404:
@@ -28,16 +28,13 @@ class CatalogClient:
             raise ValidationError("Serviço de Catálogo indisponível no momento.")
 
     @classmethod
-    def validate_price(cls, gig_data, amount):
+    def get_pacote(cls, gig_data, pacote_id):
         """
-        Valida se o valor pago bate com o valor do Gig.
+        Procura o Pacote escolhido dentro dos pacotes do Gig retornado pelo catálogo.
+        O preço cobrado sempre vem daqui — nunca é aceito do cliente.
         """
-        # Converte para float/decimal para garantir comparação correta
-        gig_price = float(gig_data.get('preco', 0))
-        paid_amount = float(amount)
+        for pacote in gig_data.get('pacotes', []):
+            if pacote.get('id') == pacote_id:
+                return pacote
 
-        if paid_amount < gig_price:
-            raise ValidationError(
-                f"Valor incorreto. O preço do Gig é R$ {gig_price}, mas foi enviado R$ {paid_amount}.")
-
-        return True
+        raise ValidationError(f"Pacote {pacote_id} não encontrado para este Gig.")

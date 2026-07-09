@@ -1,4 +1,7 @@
 from rest_framework import viewsets, filters
+from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Area, Categoria, Subcategoria, Servico
 from .permissions import IsSellerAndOwnerOrReadOnly
@@ -51,3 +54,12 @@ class ServicoViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(freelancer_id=self.request.user.id)
+
+    @action(detail=False, methods=['get'], url_path=r'by-id/(?P<gig_id>\d+)')
+    def by_id(self, request, gig_id=None):
+        """
+        Lookup interno por ID numérico, usado por outros serviços (ex: order-service)
+        que referenciam o Gig pelo id, já que a rota pública usa slug.
+        """
+        servico = get_object_or_404(self.get_queryset(), pk=gig_id)
+        return Response(ServicoDetailSerializer(servico).data)
