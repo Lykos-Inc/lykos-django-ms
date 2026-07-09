@@ -1,6 +1,7 @@
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Area, Categoria, Subcategoria, Servico
+from .permissions import IsSellerAndOwnerOrReadOnly
 from .serializers import (
     AreaSerializer,
     CategoriaSerializer,
@@ -34,6 +35,7 @@ class ServicoViewSet(viewsets.ModelViewSet):
         'subcategoria__categoria__area'
     ).prefetch_related('pacotes')
 
+    permission_classes = [IsSellerAndOwnerOrReadOnly]
     lookup_field = 'slug'
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 
